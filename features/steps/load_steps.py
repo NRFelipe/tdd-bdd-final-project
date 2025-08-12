@@ -30,23 +30,39 @@ HTTP_200_OK = 200
 HTTP_201_CREATED = 201
 HTTP_204_NO_CONTENT = 204
 
-@given('the following products')
+
+def _to_bool(value) -> bool:
+    """Converte strings comuns de booleano para bool real."""
+    return str(value).strip().lower() in ("true", "1", "yes", "y", "t")
+
+
+@given("the following products")
 def step_impl(context):
-    """ Delete all Products and load new ones """
-    #
-    # List all of the products and delete them one by one
-    #
+    """Delete all Products and load new ones from the Background table"""
     rest_endpoint = f"{context.base_url}/products"
+
+    # 1) Apaga tudo que existir
     context.resp = requests.get(rest_endpoint)
-    assert(context.resp.status_code == HTTP_200_OK)
+    assert context.resp.status_code == HTTP_200_OK, (
+        f"GET /products falhou: {context.resp.status_code} {context.resp.text}"
+    )
     for product in context.resp.json():
         context.resp = requests.delete(f"{rest_endpoint}/{product['id']}")
-        assert(context.resp.status_code == HTTP_204_NO_CONTENT)
+        assert context.resp.status_code == HTTP_204_NO_CONTENT, (
+            f"DELETE /products/{product['id']} falhou: {context.resp.status_code} {context.resp.text}"
+        )
 
-    #
-    # load the database with new products
-    #
+    # 2) Carrega os dados do Background
     for row in context.table:
-        #
-        # ADD YOUR CODE HERE TO CREATE PRODUCTS VIA THE REST API
-        #
+        payload = {
+            "name": row["name"],
+            "description": row["description"],
+            # Deixe price como string; o serviço converte via Decimal
+            "price": row["price"],
+            "available": _to_bool(row["available"]),
+            "category": row["category"],
+        }
+        context.resp = requests.post(rest_endpoint, json=payload)
+        assert context.resp.status_code == HTTP_201_CREATED, (
+            f"POST /products falhou: {context.resp.status_code} {context.resp.text}"
+        )
