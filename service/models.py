@@ -156,9 +156,9 @@ class Product(db.Model):
 
     @classmethod
     def find(cls, product_id: int):
-        """Finds a Product by its ID"""
         logger.info("Processing lookup for id %s ...", product_id)
-        return cls.query.get(product_id)
+        return db.session.get(cls, product_id)
+
 
     @classmethod
     def find_by_name(cls, name: str):
